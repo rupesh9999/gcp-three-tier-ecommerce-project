@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
-  namespace: production
+  namespace: ecommerce
   labels:
     app: user-service
     tier: backend
@@ -35,7 +35,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: user-service
-        image: us-central1-docker.pkg.dev/PROJECT_ID/ecommerce-repo/user-service:v1.0.0
+        image: us-central1-docker.pkg.dev/vaulted-harbor-476903-t8/ecommerce-repo/user-service:v1.0.0
         imagePullPolicy: Always
         ports:
         - name: http
@@ -133,15 +133,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: user-service-sa
-  namespace: production
+  namespace: ecommerce
   annotations:
-    iam.gke.io/gcp-service-account: user-service@PROJECT_ID.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: user-service@vaulted-harbor-476903-t8.iam.gserviceaccount.com
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: user-service-hpa
-  namespace: production
+  namespace: ecommerce
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

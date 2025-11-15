@@ -59,6 +59,36 @@ See [docs/runbook/RUNBOOK.md](docs/runbook/RUNBOOK.md) for complete deployment i
 - Kubernetes (GKE), Terraform
 - Jenkins, ArgoCD, Docker
 
+## 🧹 Resource Cleanup
+
+If you need to clean up all GCP resources created during deployment:
+
+```bash
+# Run the comprehensive cleanup script
+./cleanup-all.sh
+
+# Or manually clean up resources in this order:
+# 1. Delete GKE cluster
+gcloud container clusters delete ecommerce-gke-cluster --zone=us-central1-a --project=YOUR_PROJECT_ID --quiet
+
+# 2. Delete Cloud SQL instance (disable deletion protection first)
+gcloud sql instances patch ecommerce-postgres --project=YOUR_PROJECT_ID --no-deletion-protection --quiet
+gcloud sql instances delete ecommerce-postgres --project=YOUR_PROJECT_ID --quiet
+
+# 3. Delete storage buckets
+gcloud storage rm --recursive gs://ecommerce-terraform-state-t8/
+gcloud storage rm --recursive gs://frontend-static-bucket/
+gcloud storage rm --recursive gs://product-images-bucket/
+
+# 4. Delete Pub/Sub topics and subscriptions
+gcloud pubsub topics delete order-created order-updated payment-processed notification-requested inventory-updated --project=YOUR_PROJECT_ID --quiet
+
+# 5. Delete VPC network and subnet
+gcloud compute networks subnets delete ecommerce-vpc-gke-subnet --region=us-central1 --project=YOUR_PROJECT_ID --quiet
+gcloud compute addresses delete private-ip-address --global --project=YOUR_PROJECT_ID --quiet
+gcloud compute networks delete ecommerce-vpc --project=YOUR_PROJECT_ID --quiet
+```
+
 ## 📚 Documentation
 
 - [Quick Start Guide](QUICKSTART.md)

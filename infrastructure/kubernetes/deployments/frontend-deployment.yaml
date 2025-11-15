@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: production
+  namespace: ecommerce
   labels:
     app: frontend
     tier: presentation
@@ -30,7 +30,7 @@ spec:
         fsGroup: 101
       containers:
       - name: frontend
-        image: us-central1-docker.pkg.dev/PROJECT_ID/ecommerce-repo/frontend:v1.0.0
+        image: us-central1-docker.pkg.dev/vaulted-harbor-476903-t8/ecommerce-repo/frontend:v1.0.0
         imagePullPolicy: Always
         ports:
         - name: http
@@ -72,7 +72,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: frontend-hpa
-  namespace: production
+  namespace: ecommerce
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

@@ -11,7 +11,7 @@ variable "region" {
 }
 
 variable "zone" {
-  description = "The GCP zone"
+  description = "The GCP zone for zonal resources like GKE cluster"
   type        = string
   default     = "us-central1-a"
 }

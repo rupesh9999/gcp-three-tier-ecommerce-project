@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -11,9 +11,9 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "gcs" {
-    bucket = "ecommerce-terraform-state"
+    bucket = "ecommerce-terraform-state-t8"
     prefix = "terraform/state"
   }
 }
@@ -41,17 +41,17 @@ resource "google_compute_subnetwork" "gke_subnet" {
   ip_cidr_range = "10.0.0.0/20"
   region        = var.region
   network       = google_compute_network.vpc_network.id
-  
+
   secondary_ip_range {
     range_name    = "gke-pods"
     ip_cidr_range = "10.4.0.0/14"
   }
-  
+
   secondary_ip_range {
     range_name    = "gke-services"
     ip_cidr_range = "10.8.0.0/20"
   }
-  
+
   private_ip_google_access = true
 }
 
@@ -61,7 +61,7 @@ resource "google_compute_subnetwork" "data_subnet" {
   ip_cidr_range = "10.1.0.0/24"
   region        = var.region
   network       = google_compute_network.vpc_network.id
-  
+
   private_ip_google_access = true
 }
 
@@ -69,21 +69,21 @@ resource "google_compute_subnetwork" "data_subnet" {
 resource "google_compute_firewall" "allow_internal" {
   name    = "${var.vpc_name}-allow-internal"
   network = google_compute_network.vpc_network.name
-  
+
   allow {
     protocol = "tcp"
     ports    = ["0-65535"]
   }
-  
+
   allow {
     protocol = "udp"
     ports    = ["0-65535"]
   }
-  
+
   allow {
     protocol = "icmp"
   }
-  
+
   source_ranges = ["10.0.0.0/8"]
 }
 
@@ -91,17 +91,17 @@ resource "google_compute_firewall" "allow_internal" {
 resource "google_compute_firewall" "allow_health_checks" {
   name    = "${var.vpc_name}-allow-health-checks"
   network = google_compute_network.vpc_network.name
-  
+
   allow {
     protocol = "tcp"
     ports    = ["80", "443", "8080-8090"]
   }
-  
+
   source_ranges = [
     "35.191.0.0/16",
     "130.211.0.0/22"
   ]
-  
+
   target_tags = ["gke-node"]
 }
 
@@ -118,7 +118,7 @@ resource "google_compute_router_nat" "nat" {
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-  
+
   log_config {
     enable = true
     filter = "ERRORS_ONLY"
@@ -128,32 +128,39 @@ resource "google_compute_router_nat" "nat" {
 # GKE Cluster
 resource "google_container_cluster" "primary" {
   name     = var.gke_cluster_name
-  location = var.region
-  
+  location = var.zone
+
+  # We can't create a cluster with no node pool defined, but we want to only use
+  # separately managed node pools. So we create the smallest possible default
+  # node pool and immediately delete it.
   remove_default_node_pool = true
   initial_node_count       = 1
-  
+
   network    = google_compute_network.vpc_network.name
   subnetwork = google_compute_subnetwork.gke_subnet.name
-  
+
+  # Enable IP aliasing for VPC-native cluster
   ip_allocation_policy {
     cluster_secondary_range_name  = "gke-pods"
     services_secondary_range_name = "gke-services"
   }
-  
+
+  # Configure private cluster
   private_cluster_config {
     enable_private_nodes    = true
     enable_private_endpoint = false
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
-  
+
+  # Allow access from anywhere (can be restricted in production)
   master_authorized_networks_config {
     cidr_blocks {
       cidr_block   = "0.0.0.0/0"
       display_name = "All networks"
     }
   }
-  
+
+  # Enable useful addons
   addons_config {
     http_load_balancing {
       disabled = false
@@ -161,15 +168,30 @@ resource "google_container_cluster" "primary" {
     horizontal_pod_autoscaling {
       disabled = false
     }
-    network_policy_config {
-      disabled = false
-    }
   }
-  
+
+  # Enable Workload Identity
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
-  
+
+  # Maintenance window
+  maintenance_policy {
+    daily_maintenance_window {
+      start_time = "03:00"
+    }
+  }
+
+  # Use regular release channel
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  # Enable basic logging and monitoring
+  logging_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  }
+
   monitoring_config {
     enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
     
@@ -177,60 +199,46 @@ resource "google_container_cluster" "primary" {
       enabled = true
     }
   }
-  
-  logging_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-  }
-  
-  maintenance_policy {
-    daily_maintenance_window {
-      start_time = "03:00"
-    }
-  }
-  
-  release_channel {
-    channel = "REGULAR"
-  }
 }
 
 # GKE Node Pool
 resource "google_container_node_pool" "primary_nodes" {
   name       = "${var.gke_cluster_name}-node-pool"
-  location   = var.region
+  location   = var.zone
   cluster    = google_container_cluster.primary.name
   node_count = var.gke_node_count
-  
+
   autoscaling {
     min_node_count = 3
     max_node_count = 10
   }
-  
+
   management {
     auto_repair  = true
     auto_upgrade = true
   }
-  
+
   node_config {
     preemptible  = false
     machine_type = var.gke_machine_type
     disk_size_gb = 100
     disk_type    = "pd-standard"
-    
+
     tags = ["gke-node"]
-    
+
     labels = {
       environment = "production"
       managed_by  = "terraform"
     }
-    
+
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
-    
+
     workload_metadata_config {
       mode = "GKE_METADATA"
     }
-    
+
     shielded_instance_config {
       enable_secure_boot          = true
       enable_integrity_monitoring = true
@@ -243,20 +251,20 @@ resource "google_sql_database_instance" "postgres" {
   name             = var.db_instance_name
   database_version = var.db_version
   region           = var.region
-  
+
   settings {
     tier              = var.db_tier
     availability_type = "REGIONAL"
     disk_type         = "PD_SSD"
     disk_size         = 100
     disk_autoresize   = true
-    
+
     ip_configuration {
       ipv4_enabled    = false
       private_network = google_compute_network.vpc_network.id
-      require_ssl     = true
+      ssl_mode        = "ENCRYPTED_ONLY"
     }
-    
+
     backup_configuration {
       enabled                        = true
       start_time                     = "02:00"
@@ -266,12 +274,12 @@ resource "google_sql_database_instance" "postgres" {
         retained_backups = 30
       }
     }
-    
+
     maintenance_window {
       day  = 7
       hour = 3
     }
-    
+
     insights_config {
       query_insights_enabled  = true
       query_string_length     = 1024
@@ -279,9 +287,9 @@ resource "google_sql_database_instance" "postgres" {
       record_client_address   = true
     }
   }
-  
-  deletion_protection = true
-  
+
+  deletion_protection = false
+
   depends_on = [google_service_networking_connection.private_vpc_connection]
 }
 
@@ -308,7 +316,7 @@ resource "google_redis_instance" "cache" {
   region             = var.region
   redis_version      = "REDIS_7_0"
   authorized_network = google_compute_network.vpc_network.id
-  
+
   maintenance_policy {
     weekly_maintenance_window {
       day = "SUNDAY"
@@ -318,7 +326,7 @@ resource "google_redis_instance" "cache" {
       }
     }
   }
-  
+
   persistence_config {
     persistence_mode    = "RDB"
     rdb_snapshot_period = "TWELVE_HOURS"
@@ -330,13 +338,13 @@ resource "google_storage_bucket" "frontend_static" {
   name          = "${var.project_id}-${var.frontend_bucket_name}"
   location      = var.region
   force_destroy = false
-  
+
   uniform_bucket_level_access = true
-  
+
   versioning {
     enabled = true
   }
-  
+
   lifecycle_rule {
     condition {
       num_newer_versions = 3
@@ -345,7 +353,7 @@ resource "google_storage_bucket" "frontend_static" {
       type = "Delete"
     }
   }
-  
+
   cors {
     origin          = ["*"]
     method          = ["GET", "HEAD"]
@@ -358,13 +366,13 @@ resource "google_storage_bucket" "product_images" {
   name          = "${var.project_id}-${var.images_bucket_name}"
   location      = var.region
   force_destroy = false
-  
+
   uniform_bucket_level_access = true
-  
+
   versioning {
     enabled = true
   }
-  
+
   lifecycle_rule {
     condition {
       age = 90
@@ -374,7 +382,7 @@ resource "google_storage_bucket" "product_images" {
       storage_class = "NEARLINE"
     }
   }
-  
+
   cors {
     origin          = ["*"]
     method          = ["GET", "HEAD", "PUT", "POST"]
@@ -386,26 +394,26 @@ resource "google_storage_bucket" "product_images" {
 # Pub/Sub Topics
 resource "google_pubsub_topic" "topics" {
   for_each = toset(var.pubsub_topics)
-  
+
   name = each.key
-  
+
   message_retention_duration = "604800s"
 }
 
 # Pub/Sub Subscriptions
 resource "google_pubsub_subscription" "subscriptions" {
   for_each = toset(var.pubsub_topics)
-  
+
   name  = "${each.key}-subscription"
   topic = google_pubsub_topic.topics[each.key].name
-  
+
   ack_deadline_seconds = 20
-  
+
   retry_policy {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
   }
-  
+
   dead_letter_policy {
     dead_letter_topic     = google_pubsub_topic.dead_letter.id
     max_delivery_attempts = 5
@@ -414,7 +422,7 @@ resource "google_pubsub_subscription" "subscriptions" {
 
 resource "google_pubsub_topic" "dead_letter" {
   name = "dead-letter-topic"
-  
+
   message_retention_duration = "604800s"
 }
 
@@ -447,7 +455,7 @@ resource "google_project_iam_member" "gke_sa_roles" {
     "roles/pubsub.subscriber",
     "roles/storage.objectViewer"
   ])
-  
+
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${google_service_account.gke_sa.email}"
