@@ -1,0 +1,203 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: user-service-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/YOUR_ORG/gcp-three-tier-ecommerce-project.git
+    targetRevision: main
+    path: infrastructure/kubernetes/deployments
+    directory:
+      recurse: false
+      include: 'user-service-deployment.yaml'
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas
+  
+  info:
+    - name: Environment
+      value: Production
+    - name: Service
+      value: User Service
+    - name: Team
+      value: Backend Team
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/YOUR_ORG/gcp-three-tier-ecommerce-project.git
+    targetRevision: main
+    path: infrastructure/kubernetes/deployments
+    directory:
+      recurse: false
+      include: 'frontend-deployment.yaml'
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas
+  
+  info:
+    - name: Environment
+      value: Production
+    - name: Service
+      value: Frontend
+    - name: Team
+      value: Frontend Team
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: services-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/YOUR_ORG/gcp-three-tier-ecommerce-project.git
+    targetRevision: main
+    path: infrastructure/kubernetes/services
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  info:
+    - name: Environment
+      value: Production
+    - name: Component
+      value: Services
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/YOUR_ORG/gcp-three-tier-ecommerce-project.git
+    targetRevision: main
+    path: infrastructure/kubernetes/ingress
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  info:
+    - name: Environment
+      value: Production
+    - name: Component
+      value: Ingress/Load Balancer

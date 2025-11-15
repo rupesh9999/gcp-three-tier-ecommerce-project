@@ -1,0 +1,105 @@
+# CI/CD - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with CI/CD-specific patterns
+
+# ===========================================
+# Jenkins
+# ===========================================
+# Jenkins home directory
+.jenkins/
+
+# Build artifacts
+build/
+target/
+*.jar
+*.war
+*.ear
+
+# Test results
+test-results/
+surefire-reports/
+failsafe-reports/
+
+# Coverage reports
+jacoco/
+coverage/
+*.exec
+
+# ===========================================
+# GitHub Actions
+# ===========================================
+# Workflow logs
+.github/workflows/*.log
+
+# Runner temporary files
+_runner_temp/
+actions-runner/
+
+# ===========================================
+# GitLab CI
+# ===========================================
+# Local configuration
+.gitlab-ci.yml.local
+
+# Cache directories
+.cache/
+.tmp/
+
+# ===========================================
+# Docker (CI/CD specific)
+# ===========================================
+# Docker build cache
+.docker/
+
+# Multi-stage build intermediates
+**/build/
+**/dist/
+
+# ===========================================
+# Testing (CI/CD specific)
+# ===========================================
+# Integration test data
+test-data/
+fixtures/
+
+# Performance test results
+performance-results/
+load-test-results/
+
+# ===========================================
+# Deployment Artifacts
+# ===========================================
+# Kubernetes manifests generated
+generated-manifests/
+
+# Helm charts packaged
+*.tgz
+
+# ===========================================
+# Security Scanning
+# ===========================================
+# Vulnerability reports
+vulnerability-reports/
+security-scan-results/
+
+# SAST/DAST results
+sast-results/
+dast-results/
+
+# ===========================================
+# Code Quality
+# ===========================================
+# SonarQube reports
+sonar-reports/
+.scannerwork/
+
+# ESLint reports
+eslint-reports/
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!Jenkinsfile
+!jenkins/
+!.github/
+!.gitlab-ci.yml
+!ci-cd/

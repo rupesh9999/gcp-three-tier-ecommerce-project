@@ -1,0 +1,108 @@
+# Infrastructure - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with infrastructure-specific patterns
+
+# ===========================================
+# Terraform
+# ===========================================
+# State files (already covered in root, but explicit)
+*.tfstate
+*.tfstate.backup
+.terraform/
+terraform.tfstate.d/
+
+# Lock files
+.terraform.lock.hcl
+*.lock.hcl
+
+# Variables (sensitive)
+terraform.tfvars
+*.auto.tfvars
+secrets.tfvars
+
+# Plan files
+*.tfplan
+*.tfplan.json
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ===========================================
+# Kubernetes
+# ===========================================
+# Kustomize
+kustomization.yaml.bak
+
+# Helm
+charts/*/charts/
+charts/*/tmpcharts/
+
+# Secrets (should be managed via external secrets)
+secrets.yaml
+secrets.yml
+
+# ===========================================
+# Cloud Providers
+# ===========================================
+# AWS
+.aws/
+credentials
+config
+
+# GCP
+*.p12
+*.json
+!terraform.tfvars.example
+
+# Azure
+.azure/
+
+# ===========================================
+# Infrastructure Tools
+# ===========================================
+# Ansible
+*.retry
+ansible.cfg
+
+# Packer
+packer_cache/
+
+# Vagrant
+.vagrant/
+
+# ===========================================
+# Monitoring and Logging
+# ===========================================
+# Prometheus
+prometheus/data/
+prometheus/wal/
+
+# Grafana
+grafana/data/
+
+# ELK Stack
+elasticsearch/data/
+logstash/data/
+kibana/data/
+
+# ===========================================
+# CI/CD Artifacts
+# ===========================================
+# Jenkins
+.jenkins/
+
+# GitLab CI
+.gitlab-ci.yml.local
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!main.tf
+!variables.tf
+!outputs.tf
+!terraform.tfvars.example
+!*.yaml
+!*.yml
+!Dockerfile*

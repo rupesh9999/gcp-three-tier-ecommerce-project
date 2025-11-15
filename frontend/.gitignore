@@ -1,0 +1,117 @@
+# Frontend (React/TypeScript) - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with frontend-specific patterns
+
+# ===========================================
+# React/TypeScript Specific
+# ===========================================
+# Build outputs (additional patterns)
+.next/
+out/
+.nuxt/
+.parcel-cache/
+
+# Storybook
+.out
+.storybook-out
+storybook-static/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ===========================================
+# Development Tools
+# ===========================================
+# Local development overrides
+.env.local.override
+.env.development.override
+
+# Hot reload cache
+.hot-reload/
+
+# ===========================================
+# Testing Specific
+# ===========================================
+# Jest cache
+.jest/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/fixtures/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ===========================================
+# IDE and Editor (Frontend specific)
+# ===========================================
+# VS Code specific
+.vscode/settings.json
+.vscode/launch.json
+!.vscode/extensions.json
+
+# WebStorm
+.idea/
+
+# ===========================================
+# Package Managers
+# ===========================================
+# Yarn
+.yarn/cache
+.yarn/install-state.gz
+
+# pnpm
+.pnpm-debug.log*
+
+# ===========================================
+# Browser Extensions
+# ===========================================
+# Chrome extension
+chrome-extension/
+
+# Firefox extension
+firefox-extension/
+
+# ===========================================
+# Mobile Development
+# ===========================================
+# React Native
+.expo/
+.expo-shared/
+
+# Cordova
+platforms/
+plugins/
+
+# ===========================================
+# Static Site Generators
+# ===========================================
+# Gatsby
+.cache/
+public
+
+# Docusaurus
+.docusaurus/
+
+# ===========================================
+# Framework Specific
+# ===========================================
+# Next.js
+.next/
+
+# Nuxt.js
+.nuxt/
+
+# SvelteKit
+.svelte-kit/
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!.env.example
+!package.json
+!tsconfig.json
+!public/
+!src/

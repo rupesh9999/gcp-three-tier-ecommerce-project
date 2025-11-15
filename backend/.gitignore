@@ -1,0 +1,124 @@
+# Backend (Java/Spring Boot) - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with backend-specific patterns
+
+# ===========================================
+# Java/Spring Boot Specific
+# ===========================================
+# Spring Boot
+*.original
+application-local.properties
+application-local.yml
+application-dev.properties
+application-dev.yml
+
+# Compiled classes
+*.class
+
+# Application logs
+application.log
+spring.log
+catalina.out
+
+# Heap dumps
+*.hprof
+*.heapdump
+
+# ===========================================
+# IDE Specific (Backend)
+# ===========================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# NetBeans
+nb-configuration.xml
+nbactions.xml
+nbproject/
+
+# VS Code (backend specific)
+.vscode/settings.json
+.vscode/launch.json
+!.vscode/extensions.json
+
+# ===========================================
+# Build Tools
+# ===========================================
+# Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# Gradle (if used)
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# ===========================================
+# Testing
+# ===========================================
+# Test reports
+test-results/
+surefire-reports/
+failsafe-reports/
+
+# Jacoco coverage
+jacoco/
+*.exec
+
+# ===========================================
+# Frameworks
+# ===========================================
+# Hibernate
+hibernate.log
+
+# Logback
+logback.log
+
+# ===========================================
+# Database (Backend specific)
+# ===========================================
+# H2 Database (for testing)
+testdb.*
+*.db
+*.trace.db
+
+# Liquibase/Flyway
+db/changelog/*.sql
+
+# ===========================================
+# Microservices
+# ===========================================
+# Service discovery
+eureka-client.log
+
+# Config server
+config-server.log
+
+# Gateway
+gateway.log
+
+# ===========================================
+# Docker (Backend specific)
+# ===========================================
+# Docker layers
+.dockerignore
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!src/
+!pom.xml
+!Dockerfile
+!application.yml
+!application.properties

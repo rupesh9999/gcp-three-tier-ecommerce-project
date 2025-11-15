@@ -1,0 +1,91 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "ecommerce-static-ip"
+    networking.gke.io/managed-certificates: "ecommerce-ssl-cert"
+    kubernetes.io/ingress.allow-http: "true"
+    ingress.gcp.kubernetes.io/pre-shared-cert: "ecommerce-ssl-cert"
+    cloud.google.com/backend-config: '{"default": "backend-config"}'
+    cloud.google.com/armor-config: '{"securityPolicy": "ecommerce-security-policy"}'
+spec:
+  rules:
+  - host: your-domain.com
+    http:
+      paths:
+      - path: /api/v1/users/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: user-service
+            port:
+              number: 8081
+      - path: /api/v1/products/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: product-service
+            port:
+              number: 8082
+      - path: /api/v1/orders/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: order-service
+            port:
+              number: 8083
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: ecommerce-ssl-cert
+  namespace: production
+spec:
+  domains:
+  - your-domain.com
+  - www.your-domain.com
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: backend-config
+  namespace: production
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 60
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /api/v1/actuator/health
+    port: 8081
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: false
+    negativeCaching: true
+    negativeCachingPolicy:
+    - code: 404
+      ttl: 120
+    - code: 410
+      ttl: 120
+  iap:
+    enabled: false
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+    affinityCookieTtlSec: 3600

@@ -1,0 +1,285 @@
+pipeline {
+    agent any
+    
+    environment {
+        PROJECT_ID = 'YOUR_PROJECT_ID'
+        REGION = 'us-central1'
+        CLUSTER_NAME = 'ecommerce-gke-cluster'
+        REGISTRY_URL = "${REGION}-docker.pkg.dev/${PROJECT_ID}/ecommerce-repo"
+        GCP_CREDENTIALS = credentials('gcp-service-account-key')
+        SONAR_TOKEN = credentials('sonarqube-token')
+        GIT_BRANCH = "${env.BRANCH_NAME ?: 'main'}"
+        BUILD_VERSION = "${env.BUILD_NUMBER}"
+    }
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "Checking out branch: ${GIT_BRANCH}"
+                    checkout scm
+                    sh 'git log -1'
+                }
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                script {
+                    echo "Setting up GCP authentication"
+                    sh '''
+                        echo $GCP_CREDENTIALS | base64 -d > ${WORKSPACE}/gcp-key.json
+                        gcloud auth activate-service-account --key-file=${WORKSPACE}/gcp-key.json
+                        gcloud config set project ${PROJECT_ID}
+                        gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+                    '''
+                }
+            }
+        }
+        
+        stage('Backend Tests') {
+            parallel {
+                stage('User Service Tests') {
+                    steps {
+                        dir('backend/user-service') {
+                            sh '''
+                                mvn clean test
+                                mvn jacoco:report
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'backend/user-service/target/surefire-reports/*.xml'
+                            jacoco(
+                                execPattern: 'backend/user-service/target/jacoco.exec',
+                                classPattern: 'backend/user-service/target/classes',
+                                sourcePattern: 'backend/user-service/src/main/java'
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Frontend Tests') {
+            steps {
+                dir('frontend') {
+                    sh '''
+                        npm ci
+                        npm run test -- --coverage --watchAll=false
+                    '''
+                }
+            }
+            post {
+                always {
+                    publishHTML([
+                        reportDir: 'frontend/coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Frontend Coverage Report',
+                        allowMissing: true
+                    ])
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    echo "Running SonarQube analysis"
+                    // Backend analysis
+                    dir('backend/user-service') {
+                        sh '''
+                            mvn sonar:sonar \
+                              -Dsonar.projectKey=ecommerce-user-service \
+                              -Dsonar.host.url=http://sonarqube:9000 \
+                              -Dsonar.login=${SONAR_TOKEN}
+                        '''
+                    }
+                    
+                    // Frontend analysis
+                    dir('frontend') {
+                        sh '''
+                            npm run sonar -- \
+                              -Dsonar.projectKey=ecommerce-frontend \
+                              -Dsonar.host.url=http://sonarqube:9000 \
+                              -Dsonar.login=${SONAR_TOKEN}
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build User Service') {
+                    steps {
+                        dir('backend/user-service') {
+                            sh '''
+                                docker build -t ${REGISTRY_URL}/user-service:${BUILD_VERSION} .
+                                docker tag ${REGISTRY_URL}/user-service:${BUILD_VERSION} ${REGISTRY_URL}/user-service:latest
+                            '''
+                        }
+                    }
+                }
+                
+                stage('Build Frontend') {
+                    steps {
+                        dir('frontend') {
+                            sh '''
+                                docker build -t ${REGISTRY_URL}/frontend:${BUILD_VERSION} .
+                                docker tag ${REGISTRY_URL}/frontend:${BUILD_VERSION} ${REGISTRY_URL}/frontend:latest
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            parallel {
+                stage('Scan User Service Image') {
+                    steps {
+                        sh '''
+                            gcloud artifacts docker images scan ${REGISTRY_URL}/user-service:${BUILD_VERSION} \
+                              --location=${REGION}
+                        '''
+                    }
+                }
+                
+                stage('Scan Frontend Image') {
+                    steps {
+                        sh '''
+                            gcloud artifacts docker images scan ${REGISTRY_URL}/frontend:${BUILD_VERSION} \
+                              --location=${REGION}
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Push Docker Images') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    echo "Pushing images to Artifact Registry"
+                    sh '''
+                        docker push ${REGISTRY_URL}/user-service:${BUILD_VERSION}
+                        docker push ${REGISTRY_URL}/user-service:latest
+                        docker push ${REGISTRY_URL}/frontend:${BUILD_VERSION}
+                        docker push ${REGISTRY_URL}/frontend:latest
+                    '''
+                }
+            }
+        }
+        
+        stage('Update K8s Manifests') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    echo "Updating Kubernetes manifests with new image tags"
+                    sh '''
+                        # Update user-service deployment
+                        sed -i "s|image:.*user-service:.*|image: ${REGISTRY_URL}/user-service:${BUILD_VERSION}|g" \
+                          infrastructure/kubernetes/deployments/user-service-deployment.yaml
+                        
+                        # Update frontend deployment
+                        sed -i "s|image:.*frontend:.*|image: ${REGISTRY_URL}/frontend:${BUILD_VERSION}|g" \
+                          infrastructure/kubernetes/deployments/frontend-deployment.yaml
+                        
+                        # Commit and push changes
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins CI"
+                        git add infrastructure/kubernetes/deployments/
+                        git commit -m "Update image tags to ${BUILD_VERSION}" || echo "No changes to commit"
+                        git push origin main || echo "Nothing to push"
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy to GKE (Staging)') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script {
+                    echo "Deploying to staging environment"
+                    sh '''
+                        gcloud container clusters get-credentials ${CLUSTER_NAME} \
+                          --region=${REGION} --project=${PROJECT_ID}
+                        
+                        kubectl apply -f infrastructure/kubernetes/config/configmap.yaml -n staging
+                        kubectl apply -f infrastructure/kubernetes/deployments/user-service-deployment.yaml -n staging
+                        kubectl apply -f infrastructure/kubernetes/services/user-service-service.yaml -n staging
+                        kubectl apply -f infrastructure/kubernetes/deployments/frontend-deployment.yaml -n staging
+                        kubectl apply -f infrastructure/kubernetes/services/frontend-service.yaml -n staging
+                        
+                        kubectl rollout status deployment/user-service -n staging
+                        kubectl rollout status deployment/frontend -n staging
+                    '''
+                }
+            }
+        }
+        
+        stage('Smoke Tests') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                script {
+                    echo "Running smoke tests against staging"
+                    sh '''
+                        STAGING_URL=$(kubectl get svc user-service -n staging -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                        
+                        # Test health endpoint
+                        curl -f http://${STAGING_URL}:8081/api/v1/actuator/health || exit 1
+                        
+                        # Test registration endpoint
+                        curl -X POST http://${STAGING_URL}:8081/api/v1/users/register \
+                          -H "Content-Type: application/json" \
+                          -d '{"firstName":"Test","lastName":"User","email":"test@example.com","password":"Test123"}' \
+                          || exit 1
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Pipeline completed successfully!"
+            // Send notification (Slack, email, etc.)
+        }
+        failure {
+            echo "Pipeline failed!"
+            // Send notification with failure details
+        }
+        always {
+            script {
+                // Cleanup
+                sh '''
+                    rm -f ${WORKSPACE}/gcp-key.json
+                    docker image prune -f
+                '''
+            }
+            cleanWs()
+        }
+    }
+}

@@ -1,0 +1,89 @@
+# Database - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with database-specific patterns
+
+# ===========================================
+# Database Files
+# ===========================================
+# PostgreSQL
+postgresql.conf
+pg_hba.conf
+pg_ident.conf
+postmaster.pid
+postmaster.opts
+postgresql.auto.conf
+recovery.conf
+
+# MySQL/MariaDB
+mysql/
+mysql-files/
+mysql-keyring/
+mysql.sock
+mysql.sock.lock
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
+# H2 Database
+*.h2.db
+*.trace.db
+testdb.*
+
+# ===========================================
+# Database Tools
+# ===========================================
+# pgAdmin
+pgadmin.log
+pgadmin.pid
+
+# DBeaver
+.dbeaver/
+
+# DataGrip
+datagrip/
+
+# ===========================================
+# Migration Tools
+# ===========================================
+# Flyway
+flyway/
+
+# Liquibase
+liquibase/
+
+# Alembic (Python)
+alembic/
+
+# ===========================================
+# Database Backups
+# ===========================================
+*.backup
+*.bak
+*.dump
+*.sql.gz
+*.tar.gz
+
+# ===========================================
+# Database Logs
+# ===========================================
+postgres.log
+mysql.log
+mongodb.log
+
+# ===========================================
+# Connection Files
+# ===========================================
+*.dsn
+*.udl
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!schema.sql
+!initial-data.sql
+!migrations/
+!seeds/

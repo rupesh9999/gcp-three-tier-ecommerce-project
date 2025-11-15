@@ -1,0 +1,75 @@
+# Documentation - Additional ignores beyond root .gitignore
+# This file supplements the root .gitignore with documentation-specific patterns
+
+# ===========================================
+# Generated Documentation
+# ===========================================
+# API Documentation
+docs/api/
+docs/apidocs/
+api-docs/
+apidocs/
+
+# Generated diagrams
+docs/diagrams/*.png
+docs/diagrams/*.jpg
+docs/diagrams/*.svg
+docs/diagrams/*.pdf
+
+# ===========================================
+# Documentation Tools
+# ===========================================
+# MkDocs
+site/
+docs/site/
+
+# Sphinx
+docs/_build/
+docs/build/
+
+# Jekyll
+docs/_site/
+.jekyll-cache/
+
+# Hugo
+docs/public/
+docs/resources/
+
+# ===========================================
+# LaTeX
+# ===========================================
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+*.lof
+*.lot
+
+# ===========================================
+# Markdown Tools
+# ===========================================
+# Pandoc
+pandoc/
+
+# ===========================================
+# Presentation Tools
+# ===========================================
+# Reveal.js
+docs/reveal.js/
+
+# ===========================================
+# Keep these files (negate patterns)
+# ===========================================
+!docs/
+!README.md
+!QUICKSTART.md
+!docs/architecture/
+!docs/runbook/
+!docs/architecture/*.md
+!docs/runbook/*.md
+!docs/architecture/*.drawio
