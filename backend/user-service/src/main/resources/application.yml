@@ -62,6 +62,11 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    redis:
+      enabled: true
+    defaults:
+      enabled: true
   metrics:
     export:
       prometheus:
