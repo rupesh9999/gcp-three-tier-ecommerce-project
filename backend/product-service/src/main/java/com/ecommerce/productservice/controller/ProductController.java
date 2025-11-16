@@ -17,6 +17,11 @@ public class ProductController {
     
     private final ProductService productService;
     
+    @GetMapping("/categories")
+    public ResponseEntity<?> getAllCategories() {
+        return ResponseEntity.ok(productService.getAllCategories());
+    }
+    
     @GetMapping
     public ResponseEntity<Page<ProductDTO>> getAllProducts(Pageable pageable) {
         return ResponseEntity.ok(productService.getAllProducts(pageable));

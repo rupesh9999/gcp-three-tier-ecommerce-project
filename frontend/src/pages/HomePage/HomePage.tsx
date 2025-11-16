@@ -1,16 +1,39 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store/store';
 import { fetchProducts } from '../../store/slices/productSlice';
+import { productAPI } from '../../services/api';
+import CategoryCard from '../../components/CategoryCard/CategoryCard';
 import './HomePage.css';
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  iconUrl: string;
+}
 
 const HomePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { items, loading } = useSelector((state: RootState) => state.products);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     dispatch(fetchProducts({ limit: 6 }));
+    
+    // Fetch categories
+    productAPI.getCategories()
+      .then(response => {
+        setCategories(response.data);
+        setCategoriesLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching categories:', error);
+        setCategoriesLoading(false);
+      });
   }, [dispatch]);
 
   const featuredProducts = items.slice(0, 6);
@@ -24,6 +47,28 @@ const HomePage: React.FC = () => {
           <Link to="/products" className="btn btn-primary">
             Shop Now
           </Link>
+        </div>
+      </section>
+
+      <section className="categories-section">
+        <div className="container">
+          <h2>Shop by Category</h2>
+          {categoriesLoading ? (
+            <div className="loading">Loading categories...</div>
+          ) : (
+            <div className="categories-grid">
+              {categories.map(category => (
+                <CategoryCard
+                  key={category.id}
+                  id={category.id}
+                  name={category.name}
+                  slug={category.slug}
+                  description={category.description}
+                  iconUrl={category.iconUrl}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

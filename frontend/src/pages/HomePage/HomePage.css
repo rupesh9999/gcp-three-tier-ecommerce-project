@@ -15,6 +15,25 @@
   margin-bottom: 30px;
 }
 
+.categories-section {
+  padding: 60px 0;
+  background-color: #fafafa;
+}
+
+.categories-section h2 {
+  text-align: center;
+  font-size: 36px;
+  margin-bottom: 40px;
+  color: #333;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
 .featured-products {
   padding: 60px 0;
 }

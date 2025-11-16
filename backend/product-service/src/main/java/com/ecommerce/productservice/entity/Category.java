@@ -29,6 +29,9 @@ public class Category {
     @Column(columnDefinition = "TEXT")
     private String description;
     
+    @Column(name = "icon_url", length = 255)
+    private String iconUrl;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;

@@ -1,5 +1,6 @@
 package com.ecommerce.productservice.service;
 
+import com.ecommerce.productservice.dto.CategoryDTO;
 import com.ecommerce.productservice.dto.ProductDTO;
 import com.ecommerce.productservice.entity.Category;
 import com.ecommerce.productservice.entity.Product;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -94,6 +96,27 @@ public class ProductService {
     
     public List<Product> getLowStockProducts() {
         return productRepository.findByQuantityLessThanAndIsActiveTrue(10);
+    }
+    
+    public List<CategoryDTO> getAllCategories() {
+        return categoryRepository.findByParentIsNullAndIsActiveTrue()
+                .stream()
+                .map(this::mapCategoryToDTO)
+                .collect(Collectors.toList());
+    }
+    
+    private CategoryDTO mapCategoryToDTO(Category category) {
+        CategoryDTO dto = new CategoryDTO();
+        dto.setId(category.getId());
+        dto.setName(category.getName());
+        dto.setSlug(category.getSlug());
+        dto.setDescription(category.getDescription());
+        dto.setIconUrl(category.getIconUrl());
+        dto.setParentId(category.getParent() != null ? category.getParent().getId() : null);
+        dto.setIsActive(category.getIsActive());
+        dto.setCreatedAt(category.getCreatedAt());
+        dto.setUpdatedAt(category.getUpdatedAt());
+        return dto;
     }
     
     private ProductDTO mapToDTO(Product product) {
