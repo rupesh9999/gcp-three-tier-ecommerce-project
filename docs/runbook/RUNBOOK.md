@@ -345,7 +345,7 @@ gcloud container clusters list
 
 # Get GKE credentials
 gcloud container clusters get-credentials ecommerce-gke-cluster \
-  --region=$REGION
+  --zone=$ZONE
 
 # Verify kubectl access
 kubectl get nodes
@@ -378,6 +378,9 @@ export CONNECTION_NAME=$(gcloud sql instances describe ecommerce-postgres \
 # Start proxy
 ./cloud_sql_proxy -instances=$CONNECTION_NAME=tcp:5432 &
 ```
+
+nohup ./cloud_sql_proxy -instances=$CONNECTION_NAME=tcp:5432 > proxy.log 2>&1 &
+
 
 ### Step 2: Create Databases
 
