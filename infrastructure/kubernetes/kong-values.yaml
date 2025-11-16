@@ -1,0 +1,41 @@
+# Kong API Gateway Configuration
+proxy:
+  enabled: true
+  type: LoadBalancer
+  http:
+    enabled: true
+    servicePort: 80
+    containerPort: 8000
+  tls:
+    enabled: false
+
+admin:
+  enabled: true
+  type: LoadBalancer
+  http:
+    enabled: true
+    servicePort: 8001
+    containerPort: 8001
+
+env:
+  database: "off"
+  # Enable rate limiting
+  plugins: bundled,rate-limiting,cors,request-transformer,response-transformer
+  
+ingressController:
+  enabled: true
+  installCRDs: false
+  
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70

@@ -62,10 +62,16 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
   health:
     redis:
       enabled: true
     defaults:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
       enabled: true
   metrics:
     export:
