@@ -130,9 +130,7 @@ resource "google_container_cluster" "primary" {
   name     = var.gke_cluster_name
   location = var.zone
 
-  # We can't create a cluster with no node pool defined, but we want to only use
-  # separately managed node pools. So we create the smallest possible default
-  # node pool and immediately delete it.
+  # Create with default node pool, then remove it
   remove_default_node_pool = true
   initial_node_count       = 1
 
@@ -150,14 +148,6 @@ resource "google_container_cluster" "primary" {
     enable_private_nodes    = true
     enable_private_endpoint = false
     master_ipv4_cidr_block  = "172.16.0.0/28"
-  }
-
-  # Allow access from anywhere (can be restricted in production)
-  master_authorized_networks_config {
-    cidr_blocks {
-      cidr_block   = "0.0.0.0/0"
-      display_name = "All networks"
-    }
   }
 
   # Enable useful addons
@@ -187,18 +177,10 @@ resource "google_container_cluster" "primary" {
     channel = "REGULAR"
   }
 
-  # Enable basic logging and monitoring
-  logging_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-  }
-
-  monitoring_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-    
-    managed_prometheus {
-      enabled = true
-    }
-  }
+  depends_on = [
+    google_compute_subnetwork.gke_subnet,
+    google_compute_router_nat.nat
+  ]
 }
 
 # GKE Node Pool
