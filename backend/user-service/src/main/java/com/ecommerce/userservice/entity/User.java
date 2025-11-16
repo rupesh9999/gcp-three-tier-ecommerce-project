@@ -23,13 +23,13 @@ import java.util.Set;
 public class User {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     
-    @Column(nullable = false)
+    @Column(name = "first_name", nullable = false)
     private String firstName;
     
-    @Column(nullable = false)
+    @Column(name = "last_name", nullable = false)
     private String lastName;
     
     @Column(nullable = false, unique = true)
@@ -38,30 +38,26 @@ public class User {
     @Column(nullable = false)
     private String password;
     
-    @Column(nullable = false)
-    private boolean enabled = true;
+    @Column(name = "phone_number")
+    private String phoneNumber;
     
-    @Column(nullable = false)
-    private boolean accountNonExpired = true;
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
     
-    @Column(nullable = false)
-    private boolean accountNonLocked = true;
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
     
-    @Column(nullable = false)
-    private boolean credentialsNonExpired = true;
-    
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles = new HashSet<>();
-    
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
-    @LastModifiedDate
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+    
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+    
+    @Transient
+    private Set<String> roles = new HashSet<>();
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Address> addresses = new HashSet<>();

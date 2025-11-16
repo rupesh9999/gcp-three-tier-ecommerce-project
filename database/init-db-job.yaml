@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-scripts
+  namespace: default
+data:
+  schema.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id BIGSERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        phone_number VARCHAR(20),
+        is_active BOOLEAN DEFAULT true,
+        email_verified BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        last_login_at TIMESTAMP WITH TIME ZONE
+    );
+    CREATE TABLE IF NOT EXISTS addresses (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        address_line1 VARCHAR(255) NOT NULL,
+        address_line2 VARCHAR(255),
+        city VARCHAR(100) NOT NULL,
+        state VARCHAR(100) NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        postal_code VARCHAR(20) NOT NULL,
+        is_default BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS user_roles (
+        id BIGSERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        description VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS user_role_mapping (
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role_id BIGINT NOT NULL REFERENCES user_roles(id) ON DELETE CASCADE,
+        assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, role_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
+    INSERT INTO user_roles (name, description) VALUES 
+        ('ROLE_USER', 'Standard user role'),
+        ('ROLE_ADMIN', 'Administrator role'),
+        ('ROLE_SELLER', 'Seller role')
+    ON CONFLICT (name) DO NOTHING;
+  initial-data.sql: |
+    INSERT INTO users (email, password, first_name, last_name, phone_number, is_active, email_verified)
+    VALUES 
+        ('admin@ecommerce.com', '$2a$10$xN.8QcPwXf7wFMlD7xPKbeD6rGJLKqJx.hZpYqKF5VQjN4cFqN0Yu', 'Admin', 'User', '+1234567890', true, true),
+        ('john.doe@example.com', '$2a$10$xN.8QcPwXf7wFMlD7xPKbeD6rGJLKqJx.hZpYqKF5VQjN4cFqN0Yu', 'John', 'Doe', '+1234567891', true, true)
+    ON CONFLICT (email) DO NOTHING;
+    INSERT INTO user_role_mapping (user_id, role_id)
+    SELECT u.id, r.id FROM users u CROSS JOIN user_roles r
+    WHERE u.email = 'admin@ecommerce.com' AND r.name IN ('ROLE_ADMIN', 'ROLE_USER')
+    ON CONFLICT DO NOTHING;
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-database
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: postgres-init
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          echo "Initializing database..."
+          PGPASSWORD=$DB_PASSWORD psql "host=$DB_HOST port=5432 dbname=ecommerce_users user=$DB_USER sslmode=require" -f /scripts/schema.sql
+          PGPASSWORD=$DB_PASSWORD psql "host=$DB_HOST port=5432 dbname=ecommerce_users user=$DB_USER sslmode=require" -f /scripts/initial-data.sql
+          echo "Done!"
+        env:
+        - name: DB_HOST
+          value: "10.10.0.2"
+        - name: DB_USER
+          value: "appuser"
+        - name: DB_PASSWORD
+          value: "SecurePass123!"
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      volumes:
+      - name: scripts
+        configMap:
+          name: db-init-scripts

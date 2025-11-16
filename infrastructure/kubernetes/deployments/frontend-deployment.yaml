@@ -24,10 +24,6 @@ spec:
         tier: presentation
         version: v1
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 101
-        fsGroup: 101
       containers:
       - name: frontend
         image: us-central1-docker.pkg.dev/vaulted-harbor-476903-t8/ecommerce-repo/frontend:v1.0.0

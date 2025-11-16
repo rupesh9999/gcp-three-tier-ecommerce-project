@@ -30,10 +30,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .authorities(user.getRoles().stream()
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList()))
-                .accountExpired(!user.isAccountNonExpired())
-                .accountLocked(!user.isAccountNonLocked())
-                .credentialsExpired(!user.isCredentialsNonExpired())
-                .disabled(!user.isEnabled())
+                .disabled(!user.isActive())
                 .build();
     }
 }

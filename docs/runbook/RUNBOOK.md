@@ -181,9 +181,9 @@ gcloud auth application-default login
 
 ```bash
 # Set variables
-export PROJECT_ID="ecommerce-platform-$(date +%s)"
+export PROJECT_ID="vaulted-harbor-476903-t8"
 export PROJECT_NAME="E-Commerce Platform"
-export BILLING_ACCOUNT_ID="YOUR_BILLING_ACCOUNT_ID"
+export BILLING_ACCOUNT_ID="015F37-38710A-D1F021"
 export REGION="us-central1"
 export ZONE="us-central1-a"
 

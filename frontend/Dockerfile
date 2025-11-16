@@ -8,8 +8,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (needed for build)
+# Force compatible ajv versions
+RUN npm install --legacy-peer-deps && \
+    npm install ajv@8.12.0 ajv-keywords@5.1.0 --save-dev --legacy-peer-deps
 
 # Copy source code
 COPY . .
