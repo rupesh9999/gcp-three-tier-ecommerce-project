@@ -419,6 +419,7 @@ catalina.out
 # Keep these files (negate patterns above)
 # ===========================================
 !.env.example
+.env
 !.gitignore
 !README.md
 !QUICKSTART.md
