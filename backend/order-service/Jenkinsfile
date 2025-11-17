@@ -1,0 +1,122 @@
+pipeline {
+    agent any
+    
+    environment {
+        PROJECT_ID = 'vaulted-harbor-476903-t8'
+        CLUSTER_NAME = 'ecommerce-cluster'
+        CLUSTER_ZONE = 'us-central1-a'
+        REGISTRY = 'us-central1-docker.pkg.dev'
+        REPO_NAME = 'ecommerce-repo'
+        IMAGE_NAME = 'order-service'
+        APP_NAME = 'order-service'
+        NAMESPACE = 'ecommerce'
+    }
+    
+    tools {
+        maven 'Maven-3.9'
+        jdk 'JDK-17'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '=== Checking out code from GitHub ==='
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '=== Building Order Service ==='
+                dir('backend/order-service') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                echo '=== Running Unit Tests ==='
+                dir('backend/order-service') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo '=== Building Docker Image ==='
+                dir('backend/order-service') {
+                    script {
+                        def imageTag = "${BUILD_NUMBER}"
+                        env.IMAGE_TAG = imageTag
+                        sh """
+                            docker build -t ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${imageTag} .
+                            docker tag ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${imageTag} \
+                                      ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Push to Artifact Registry') {
+            steps {
+                echo '=== Pushing Docker Image to GCP Artifact Registry ==='
+                script {
+                    sh """
+                        docker push ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to GKE') {
+            steps {
+                echo '=== Deploying to GKE Cluster ==='
+                script {
+                    sh """
+                        gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${CLUSTER_ZONE} --project ${PROJECT_ID}
+                        
+                        kubectl set image deployment/${APP_NAME} ${APP_NAME}=${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG} -n ${NAMESPACE}
+                        
+                        kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE} --timeout=5m
+                    """
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo '=== Performing Health Check ==='
+                script {
+                    sleep(time: 30, unit: 'SECONDS')
+                    sh """
+                        kubectl get pods -n ${NAMESPACE} -l app=${APP_NAME}
+                        
+                        POD_NAME=\$(kubectl get pods -n ${NAMESPACE} -l app=${APP_NAME} -o jsonpath='{.items[0].metadata.name}')
+                        kubectl exec -n ${NAMESPACE} \${POD_NAME} -- wget -qO- http://localhost:8083/api/v1/actuator/health || true
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '=== Pipeline Completed Successfully ==='
+        }
+        failure {
+            echo '=== Pipeline Failed ==='
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

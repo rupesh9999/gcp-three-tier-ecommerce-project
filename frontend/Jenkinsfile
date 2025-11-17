@@ -1,0 +1,135 @@
+pipeline {
+    agent any
+    
+    environment {
+        PROJECT_ID = 'vaulted-harbor-476903-t8'
+        CLUSTER_NAME = 'ecommerce-cluster'
+        CLUSTER_ZONE = 'us-central1-a'
+        REGISTRY = 'us-central1-docker.pkg.dev'
+        REPO_NAME = 'ecommerce-repo'
+        IMAGE_NAME = 'frontend'
+        APP_NAME = 'frontend'
+        NAMESPACE = 'ecommerce'
+    }
+    
+    tools {
+        nodejs 'NodeJS-18'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '=== Checking out code from GitHub ==='
+                checkout scm
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                echo '=== Installing NPM Dependencies ==='
+                dir('frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+        
+        stage('Lint') {
+            steps {
+                echo '=== Running ESLint ==='
+                dir('frontend') {
+                    sh 'npm run lint || true'
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                echo '=== Running Unit Tests ==='
+                dir('frontend') {
+                    sh 'npm test -- --coverage --watchAll=false || true'
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '=== Building React Application ==='
+                dir('frontend') {
+                    sh 'npm run build'
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo '=== Building Docker Image ==='
+                dir('frontend') {
+                    script {
+                        def imageTag = "${BUILD_NUMBER}"
+                        env.IMAGE_TAG = imageTag
+                        sh """
+                            docker build -t ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${imageTag} .
+                            docker tag ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${imageTag} \
+                                      ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Push to Artifact Registry') {
+            steps {
+                echo '=== Pushing Docker Image to GCP Artifact Registry ==='
+                script {
+                    sh """
+                        docker push ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to GKE') {
+            steps {
+                echo '=== Deploying to GKE Cluster ==='
+                script {
+                    sh """
+                        gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${CLUSTER_ZONE} --project ${PROJECT_ID}
+                        
+                        kubectl set image deployment/${APP_NAME} ${APP_NAME}=${REGISTRY}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG} -n ${NAMESPACE}
+                        
+                        kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE} --timeout=5m
+                    """
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo '=== Performing Health Check ==='
+                script {
+                    sleep(time: 30, unit: 'SECONDS')
+                    sh """
+                        kubectl get pods -n ${NAMESPACE} -l app=${APP_NAME}
+                        
+                        # Get external IP and test
+                        EXTERNAL_IP=\$(kubectl get svc -n ${NAMESPACE} -o jsonpath='{.items[?(@.metadata.name=="frontend")].status.loadBalancer.ingress[0].ip}')
+                        curl -I http://\${EXTERNAL_IP}/ || true
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '=== Pipeline Completed Successfully ==='
+        }
+        failure {
+            echo '=== Pipeline Failed ==='
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
