@@ -1,0 +1,96 @@
+steps:
+  # Install dependencies
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['install']
+    dir: 'frontend'
+  
+  # Run linting
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['run', 'lint']
+    dir: 'frontend'
+  
+  # Run tests
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['test', '--', '--coverage', '--watchAll=false']
+    dir: 'frontend'
+  
+  # Build production bundle
+  - name: 'node:18'
+    entrypoint: 'npm'
+    args: ['run', 'build']
+    dir: 'frontend'
+  
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend:$BUILD_ID'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend:latest'
+      - '.'
+    dir: 'frontend'
+  
+  # Push Docker images
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend'
+  
+  # Deploy to GKE
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/frontend'
+      - 'frontend=us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend:$BUILD_ID'
+      - '--namespace=ecommerce'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=ecommerce-cluster'
+  
+  # Wait for rollout to complete
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'rollout'
+      - 'status'
+      - 'deployment/frontend'
+      - '--namespace=ecommerce'
+      - '--timeout=5m'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=ecommerce-cluster'
+  
+  # Verify deployment health
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'get'
+      - 'pods'
+      - '-l'
+      - 'app=frontend'
+      - '--namespace=ecommerce'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=us-central1-a'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=ecommerce-cluster'
+
+# Images to be pushed to registry
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend:$BUILD_ID'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/ecommerce-repo/frontend:latest'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+  
+# Timeout for entire build
+timeout: 1200s
+
+# Substitutions (can be overridden)
+substitutions:
+  _SERVICE_NAME: 'frontend'
+  _NAMESPACE: 'ecommerce'
