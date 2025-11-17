@@ -1,1 +1,1 @@
-{"last_found_secrets": [{"match": "92c897c459f33cca645a74e5b16ae379c696cb07e67c79dcce0d9c876ce71dac", "name": "Base64 Generic Private Key - commit://50bc612b7ff9e69f109329a4faf0eab50e761f9d/infrastructure/kubernetes/tls-secret.yaml"}]}
+{"last_found_secrets": [{"match": "e161b6ee6d30071a9e485acea259fe94c8bba14998268c6fd9d3c9b5d6e4f1ed", "name": "Generic Password - commit://afa8f4aa0296fbe2f1daaeafe208807e09043cb0/docker-compose.yml"}]}
