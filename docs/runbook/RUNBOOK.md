@@ -1,5 +1,22 @@
-# Comprehensive Deployment Runbook
-# Three-Tier E-Commerce Application on Google Cloud Platform
+# GCP Three-Tier E-Commerce Deployment Runbook
+
+> **📢 IMPORTANT UPDATE:** This runbook has been superseded by a more comprehensive version.
+> 
+> **Please use:** [DEPLOYMENT_RUNBOOK.md](../../DEPLOYMENT_RUNBOOK.md) in the project root
+>
+> The new runbook includes:
+> - ✅ Complete step-by-step guide from scratch to production
+> - ✅ Detailed architecture explanations
+> - ✅ All commands with explanations
+> - ✅ Comprehensive troubleshooting guide
+> - ✅ Production operations and maintenance procedures
+> - ✅ Testing and validation procedures
+> - ✅ CI/CD pipeline setup (Cloud Build + Jenkins)
+> - ✅ Monitoring setup (Prometheus + Grafana)
+>
+> ---
+
+# Legacy Runbook - Three-Tier E-Commerce Application on GCP
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
